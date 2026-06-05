@@ -68,9 +68,6 @@
   </style>
 </head>
 <body>
-  <!-- DEBUG: 항상 표시 (나중에 제거) -->
-  <div id="debugBox" style="background:#222;color:#aaa;font-size:11px;word-break:break-all;padding:10px;border-radius:8px;margin-bottom:12px;text-align:left;max-width:400px;width:100%"></div>
-
   <div class="card">
     <div class="logo">GlowMatch</div>
 
@@ -117,10 +114,6 @@
     }
 
     async function init() {
-      // 항상 URL 표시
-      document.getElementById('debugBox').textContent =
-        'search: "' + window.location.search + '" | hash: "' + window.location.hash.substring(0, 60) + '"';
-
       // PKCE flow: ?token_hash=...&type=recovery
       const qs = new URLSearchParams(window.location.search);
       // Implicit flow fallback: #access_token=...&type=recovery
@@ -131,24 +124,14 @@
       const accessToken = hash.get('access_token');
       const refreshToken= hash.get('refresh_token') || '';
 
-      // DEBUG: 어떤 파라미터가 왔는지 에러 메시지에 표시
-      var debugInfo = 'search: ' + window.location.search + ' | hash: ' + (window.location.hash ? window.location.hash.substring(0, 40) + '...' : '(없음)');
-      document.getElementById('errDetail').textContent = debugInfo;
-
       if (tokenHash && type === 'recovery') {
         const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
-        if (error) {
-          document.getElementById('errDetail').textContent = '토큰 만료 또는 이미 사용됨. 앱에서 새로 요청해주세요.\n' + debugInfo;
-          show('viewError'); return;
-        }
+        if (error) { show('viewError'); return; }
       } else if (accessToken && type === 'recovery') {
         const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        if (error) {
-          document.getElementById('errDetail').textContent = '세션 오류. 앱에서 새로 요청해주세요.\n' + debugInfo;
-          show('viewError'); return;
-        }
+        if (error) { show('viewError'); return; }
       } else {
-        show('viewError'); // errDetail already set above
+        show('viewError');
         return;
       }
 
