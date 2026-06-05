@@ -124,14 +124,24 @@
       const accessToken = hash.get('access_token');
       const refreshToken= hash.get('refresh_token') || '';
 
+      // DEBUG: 어떤 파라미터가 왔는지 에러 메시지에 표시
+      var debugInfo = 'search: ' + window.location.search + ' | hash: ' + (window.location.hash ? window.location.hash.substring(0, 40) + '...' : '(없음)');
+      document.getElementById('errDetail').textContent = debugInfo;
+
       if (tokenHash && type === 'recovery') {
         const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
-        if (error) { show('viewError'); return; }
+        if (error) {
+          document.getElementById('errDetail').textContent = '토큰 만료 또는 이미 사용됨. 앱에서 새로 요청해주세요.\n' + debugInfo;
+          show('viewError'); return;
+        }
       } else if (accessToken && type === 'recovery') {
         const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        if (error) { show('viewError'); return; }
+        if (error) {
+          document.getElementById('errDetail').textContent = '세션 오류. 앱에서 새로 요청해주세요.\n' + debugInfo;
+          show('viewError'); return;
+        }
       } else {
-        show('viewError');
+        show('viewError'); // errDetail already set above
         return;
       }
 
