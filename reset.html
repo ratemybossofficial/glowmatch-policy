@@ -68,6 +68,9 @@
   </style>
 </head>
 <body>
+  <!-- DEBUG: 항상 표시 (나중에 제거) -->
+  <div id="debugBox" style="background:#222;color:#aaa;font-size:11px;word-break:break-all;padding:10px;border-radius:8px;margin-bottom:12px;text-align:left;max-width:400px;width:100%"></div>
+
   <div class="card">
     <div class="logo">GlowMatch</div>
 
@@ -114,6 +117,10 @@
     }
 
     async function init() {
+      // 항상 URL 표시
+      document.getElementById('debugBox').textContent =
+        'search: "' + window.location.search + '" | hash: "' + window.location.hash.substring(0, 60) + '"';
+
       // PKCE flow: ?token_hash=...&type=recovery
       const qs = new URLSearchParams(window.location.search);
       // Implicit flow fallback: #access_token=...&type=recovery
