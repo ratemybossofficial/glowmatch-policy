@@ -3,53 +3,166 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GlowMatch 비밀번호 재설정</title>
+  <title>GlowMatch — 비밀번호 재설정</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #141210;
       color: #f5ede0;
-      font-family: -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
       padding: 32px 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: #1e1c19;
+      border: 1px solid rgba(212,168,83,0.2);
+      border-radius: 20px;
+      padding: 36px 28px;
       text-align: center;
     }
-    h1 { font-size: 22px; margin-bottom: 12px; color: #d4a853; }
-    p  { font-size: 15px; color: rgba(245,237,224,0.6); margin-bottom: 32px; line-height: 1.6; }
-    a.btn {
-      display: inline-block;
+    .logo { font-size: 13px; letter-spacing: 4px; color: #d4a853; margin-bottom: 8px; text-transform: uppercase; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: rgba(245,237,224,0.5); margin-bottom: 28px; line-height: 1.5; }
+    label { display: block; text-align: left; font-size: 13px; color: rgba(245,237,224,0.6); margin-bottom: 6px; }
+    input {
+      width: 100%;
+      background: #141210;
+      border: 1px solid rgba(245,237,224,0.15);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-size: 16px;
+      color: #f5ede0;
+      margin-bottom: 16px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input:focus { border-color: #d4a853; }
+    button {
+      width: 100%;
       background: #d4a853;
       color: #141210;
-      padding: 14px 32px;
-      border-radius: 12px;
-      text-decoration: none;
-      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
       font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
     }
-    .note { margin-top: 20px; font-size: 13px; color: rgba(245,237,224,0.35); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { margin-top: 16px; font-size: 14px; min-height: 20px; }
+    .msg.error { color: #e05c5c; }
+    .msg.success { color: #6fcf97; }
+    .spinner { display: none; width: 32px; height: 32px; border: 3px solid rgba(212,168,83,0.3); border-top-color: #d4a853; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 24px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #viewLoading .spinner { display: block; }
+    #viewForm, #viewSuccess, #viewError { display: none; }
+    #viewLoading { display: block; }
   </style>
 </head>
 <body>
-  <h1>GlowMatch</h1>
-  <p>비밀번호를 재설정하려면<br>아래 버튼을 눌러 앱을 여세요.</p>
-  <a class="btn" id="openApp" href="#">앱에서 열기</a>
-  <p class="note">앱이 설치되어 있어야 합니다.</p>
+  <div class="card">
+    <div class="logo">GlowMatch</div>
+
+    <!-- 로딩 -->
+    <div id="viewLoading">
+      <div class="spinner"></div>
+      <p class="sub">인증 중...</p>
+    </div>
+
+    <!-- 비밀번호 입력 폼 -->
+    <div id="viewForm">
+      <h1>새 비밀번호 설정</h1>
+      <p class="sub" style="margin-bottom:24px">8자 이상, 영문+숫자 조합을 권장합니다.</p>
+      <label for="pw1">새 비밀번호</label>
+      <input type="password" id="pw1" placeholder="새 비밀번호 입력" autocomplete="new-password">
+      <label for="pw2">비밀번호 확인</label>
+      <input type="password" id="pw2" placeholder="비밀번호 재입력" autocomplete="new-password">
+      <button id="btnSubmit" onclick="changePassword()">변경 완료</button>
+      <div class="msg error" id="errMsg"></div>
+    </div>
+
+    <!-- 성공 -->
+    <div id="viewSuccess">
+      <h1 style="margin-bottom:12px">✓ 변경 완료</h1>
+      <p class="sub">비밀번호가 변경됐습니다.<br>GlowMatch 앱으로 돌아가 로그인해주세요.</p>
+    </div>
+
+    <!-- 오류 -->
+    <div id="viewError">
+      <h1 style="margin-bottom:12px">링크 만료</h1>
+      <p class="sub" id="errDetail">링크가 만료되었거나 이미 사용됐습니다.<br>앱에서 비밀번호 변경을 다시 요청해주세요.</p>
+    </div>
+  </div>
 
   <script>
-    (function () {
-      var hash   = window.location.hash   || '';   // #access_token=...&type=recovery
-      var search = window.location.search || '';   // ?token_hash=...&type=recovery
-      var deeplink = 'glowmatch://auth/callback' + hash + search;
+    const SUPABASE_URL = 'https://vuvhycmjhbqlakcjmurj.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1dmh5Y21qaGJxbGFrY2ptdXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMTgzMTgsImV4cCI6MjA5NDY5NDMxOH0.XHp7Lgop3kJAEFpCgqiJLfBaHiRKfOofgLjPbl7726g';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      document.getElementById('openApp').href = deeplink;
+    function show(id) {
+      ['viewLoading','viewForm','viewSuccess','viewError'].forEach(v => {
+        document.getElementById(v).style.display = v === id ? 'block' : 'none';
+      });
+    }
 
-      // 자동 리다이렉트 시도 (Android에서는 동작)
-      try { window.location.href = deeplink; } catch (e) {}
-    })();
+    async function init() {
+      // PKCE flow: ?token_hash=...&type=recovery
+      const qs = new URLSearchParams(window.location.search);
+      // Implicit flow fallback: #access_token=...&type=recovery
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+      const tokenHash   = qs.get('token_hash');
+      const type        = qs.get('type') || hash.get('type');
+      const accessToken = hash.get('access_token');
+      const refreshToken= hash.get('refresh_token') || '';
+
+      if (tokenHash && type === 'recovery') {
+        const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+        if (error) { show('viewError'); return; }
+      } else if (accessToken && type === 'recovery') {
+        const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        if (error) { show('viewError'); return; }
+      } else {
+        show('viewError');
+        return;
+      }
+
+      show('viewForm');
+    }
+
+    async function changePassword() {
+      const pw1 = document.getElementById('pw1').value;
+      const pw2 = document.getElementById('pw2').value;
+      const errMsg = document.getElementById('errMsg');
+      const btn = document.getElementById('btnSubmit');
+
+      errMsg.textContent = '';
+      if (pw1.length < 6) { errMsg.textContent = '6자 이상 입력해주세요.'; return; }
+      if (pw1 !== pw2)    { errMsg.textContent = '비밀번호가 일치하지 않습니다.'; return; }
+
+      btn.disabled = true;
+      btn.textContent = '변경 중...';
+
+      const { error } = await client.auth.updateUser({ password: pw1 });
+      if (error) {
+        errMsg.textContent = '오류가 발생했습니다. 다시 시도해주세요.';
+        btn.disabled = false;
+        btn.textContent = '변경 완료';
+        return;
+      }
+
+      show('viewSuccess');
+    }
+
+    init();
   </script>
 </body>
 </html>
