@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GlowMatch 비밀번호 재설정</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #141210;
+      color: #f5ede0;
+      font-family: -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    h1 { font-size: 22px; margin-bottom: 12px; color: #d4a853; }
+    p  { font-size: 15px; color: rgba(245,237,224,0.6); margin-bottom: 32px; line-height: 1.6; }
+    a.btn {
+      display: inline-block;
+      background: #d4a853;
+      color: #141210;
+      padding: 14px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .note { margin-top: 20px; font-size: 13px; color: rgba(245,237,224,0.35); }
+  </style>
+</head>
+<body>
+  <h1>GlowMatch</h1>
+  <p>비밀번호를 재설정하려면<br>아래 버튼을 눌러 앱을 여세요.</p>
+  <a class="btn" id="openApp" href="#">앱에서 열기</a>
+  <p class="note">앱이 설치되어 있어야 합니다.</p>
+
+  <script>
+    (function () {
+      var hash   = window.location.hash   || '';   // #access_token=...&type=recovery
+      var search = window.location.search || '';   // ?token_hash=...&type=recovery
+      var deeplink = 'glowmatch://auth/callback' + hash + search;
+
+      document.getElementById('openApp').href = deeplink;
+
+      // 자동 리다이렉트 시도 (Android에서는 동작)
+      try { window.location.href = deeplink; } catch (e) {}
+    })();
+  </script>
+</body>
+</html>
